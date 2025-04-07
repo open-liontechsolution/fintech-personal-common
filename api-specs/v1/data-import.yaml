@@ -1,0 +1,149 @@
+openapi: 3.0.0
+info:
+  title: Fintech Personal Data Import API
+  description: API for the Fintech Personal Data Import Service
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: Base API path
+paths:
+  /import/status/{fileId}:
+    get:
+      summary: Get import status
+      description: Get the status of a file import process
+      tags:
+        - Import
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of the uploaded file
+      responses:
+        '200':
+          description: Import status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatus'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /import/process:
+    post:
+      summary: Process file
+      description: Manually trigger the processing of a previously uploaded file
+      tags:
+        - Import
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileId
+              properties:
+                fileId:
+                  type: string
+                  description: ID of the file to process
+                importOptions:
+                  type: object
+                  properties:
+                    dateFormat:
+                      type: string
+                      description: Format of dates in the file (e.g., "DD/MM/YYYY")
+                    columnMapping:
+                      type: object
+                      description: Custom mapping of columns to data fields
+      responses:
+        '202':
+          description: Processing started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatus'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    ImportStatus:
+      type: object
+      properties:
+        fileId:
+          type: string
+        fileName:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        progress:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+          description: Progress percentage
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        error:
+          type: string
+        result:
+          type: object
+          properties:
+            recordsProcessed:
+              type: integer
+            recordsImported:
+              type: integer
+            recordsRejected:
+              type: integer
+            summaryReport:
+              type: string
+              description: URL to the summary report
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

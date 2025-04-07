@@ -1,0 +1,189 @@
+openapi: 3.0.0
+info:
+  title: Fintech Personal Data Transformation API
+  description: API for the Fintech Personal Data Transformation Service
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: Base API path
+paths:
+  /transform/status/{jobId}:
+    get:
+      summary: Get transformation job status
+      description: Get the status of a data transformation job
+      tags:
+        - Transform
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of the transformation job
+      responses:
+        '200':
+          description: Transformation status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransformationStatus'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /transform/start:
+    post:
+      summary: Start transformation job
+      description: Start a new data transformation job from MongoDB to MySQL
+      tags:
+        - Transform
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - dataSource
+              properties:
+                dataSource:
+                  type: string
+                  enum: [imported_data, all]
+                  description: Data source to transform
+                filters:
+                  type: object
+                  properties:
+                    fromDate:
+                      type: string
+                      format: date
+                    toDate:
+                      type: string
+                      format: date
+                    categories:
+                      type: array
+                      items:
+                        type: string
+                options:
+                  type: object
+                  properties:
+                    cleanExisting:
+                      type: boolean
+                      description: Whether to clean existing data in MySQL
+                    transformOptions:
+                      type: object
+                      description: Custom transformation options
+      responses:
+        '202':
+          description: Transformation job started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransformationStatus'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /transform/cancel/{jobId}:
+    post:
+      summary: Cancel transformation job
+      description: Cancel a running transformation job
+      tags:
+        - Transform
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of the transformation job to cancel
+      responses:
+        '200':
+          description: Job canceled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransformationStatus'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    TransformationStatus:
+      type: object
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed, canceled]
+        progress:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+          description: Progress percentage
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        error:
+          type: string
+        result:
+          type: object
+          properties:
+            recordsProcessed:
+              type: integer
+            recordsTransformed:
+              type: integer
+            recordsRejected:
+              type: integer
+            summaryReport:
+              type: string
+              description: URL to the summary report
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
