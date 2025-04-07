@@ -1,13 +1,14 @@
 # Fintech Personal Common
 
-This repository contains shared components, contracts, and documentation for the Fintech Personal microservices ecosystem.
+Este repositorio contiene componentes compartidos, contratos y documentación para el ecosistema de microservicios de Fintech Personal.
 
-## Overview
+## Descripción General
 
-Fintech Personal Common serves as the central hub for communication and integration between the different microservices in the Fintech Personal application. It provides a single source of truth for API specifications, data models, event contracts, and integration documentation.
+Fintech Personal Common sirve como el centro para la comunicación e integración entre los diferentes microservicios en la aplicación Fintech Personal. Proporciona una fuente única de verdad para especificaciones de API, modelos de datos, contratos de eventos y documentación de integración.
 
-## Repository Structure
+## Estructura del Repositorio
 
+```
 fintech-personal-common/
 ├── README.md
 ├── .gitignore
@@ -16,60 +17,192 @@ fintech-personal-common/
 ├── api-specs/
 │   └── v1/
 │       ├── web-app.yaml
-│       └── data-import.yaml
+│       ├── data-import.yaml
+│       └── data-transf.yaml
 ├── schemas/
 │   ├── dto/
-│   └── events/
+│   │   ├── users.ts
+│   │   ├── finances.ts
+│   │   └── imports.ts
+│   ├── events/
+│   │   └── file-events.ts
+│   └── mysql/
+│       ├── users.sql
+│       ├── accounts.sql
+│       └── imports.sql
 ├── contracts/
 │   ├── rabbitmq/
 │   │   └── file-events.md
 │   └── rest/
+├── src/
+│   ├── index.ts
+│   ├── errors/
+│   │   └── app-error.ts
+│   ├── validation/
+│   │   └── validator.ts
+│   └── messaging/
+│       └── rabbitmq-client.ts
 └── docs/
     ├── api/
     ├── events/
     └── integration/
+        ├── architecture-overview.md
+        └── file-import-flow.md
+```
 
+## Arquitectura de Microservicios
 
-## Microservices Architecture
+La aplicación Fintech Personal está construida sobre una arquitectura de microservicios con los siguientes componentes:
 
-The Fintech Personal application is built on a microservices architecture with the following components:
+1. **web-app**: Servicio frontend y API REST
+2. **data-import**: Servicio para procesar archivos subidos (CSV/Excel)
+3. **data-transf**: Servicio para transformar datos desde MongoDB a MySQL
 
-1. **web-app**: Frontend and REST API service
-2. **data-import**: Service for processing uploaded files (CSV/Excel)
-3. **data-transf**: Service for transforming data from MongoDB to MySQL
+Estos servicios se comunican a través de:
+- APIs REST (documentadas en `api-specs/`)
+- Eventos RabbitMQ (documentados en `contracts/rabbitmq/`)
 
-These services communicate through:
-- REST APIs (documented in `api-specs/`)
-- RabbitMQ events (documented in `contracts/rabbitmq/`)
+## Instalación
 
-## API Specifications
+Para instalar esta biblioteca en tus microservicios:
 
-API specifications are written in OpenAPI (Swagger) format and are located in the `api-specs/` directory. These specifications serve as contracts between services and provide documentation for developers.
+```bash
+npm install --save fintech-personal-common
+```
 
-## Event Contracts
+## Uso
 
-Event contracts define the structure and semantics of events exchanged between services through RabbitMQ. These contracts ensure that services can communicate effectively and maintain compatibility.
+### Importar DTOs
 
-## Data Models
+```typescript
+import { UserDto, LoginRequestDto } from 'fintech-personal-common';
 
-Shared data models and DTOs are located in the `schemas/` directory. These models ensure consistency across services and provide a common language for developers.
+const user: UserDto = {
+  id: '123',
+  username: 'usuario',
+  email: 'usuario@example.com'
+};
+```
 
-## Documentation
+### Utilizar el Cliente RabbitMQ
 
-Comprehensive documentation is available in the `docs/` directory. This documentation includes:
-- API documentation
-- Event documentation
-- Integration guides
-- Best practices
+```typescript
+import { RabbitMQClient, FileUploadedEvent } from 'fintech-personal-common';
 
-## Getting Started
+const client = new RabbitMQClient({
+  url: 'amqp://localhost',
+  exchange: 'fintech.topic',
+  exchangeType: 'topic'
+});
 
-To use this repository in your microservice:
+// Publicar un evento
+await client.publish<FileUploadedEvent>({
+  eventId: '123',
+  eventType: 'FileUploaded',
+  timestamp: new Date().toISOString(),
+  data: {
+    fileId: '456',
+    fileName: 'transacciones.csv',
+    fileType: 'bank',
+    userId: '789'
+  }
+}, {
+  routingKey: 'file.upload'
+});
 
-1. Clone this repository
-2. Reference the appropriate contracts and schemas
-3. Follow the integration guides in the `docs/` directory
+// Consumir eventos
+await client.consume({
+  queue: 'file-upload-queue',
+  routingKey: 'file.upload'
+}, async (message) => {
+  console.log('Archivo recibido:', message.data.fileName);
+});
+```
 
-## License
+### Manejo de Errores
 
-This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+```typescript
+import { AppError, NotFoundError } from 'fintech-personal-common';
+
+try {
+  // Código que puede fallar
+} catch (error) {
+  if (error instanceof NotFoundError) {
+    console.log('Recurso no encontrado');
+  } else if (error instanceof AppError) {
+    console.log(`Error de aplicación: ${error.message}`);
+  } else {
+    console.log('Error desconocido');
+  }
+}
+```
+
+### Validación
+
+```typescript
+import { BaseValidator, ValidationUtils } from 'fintech-personal-common';
+
+class UserValidator extends BaseValidator<UserDto> {
+  validate(data: UserDto) {
+    const errors = [];
+    
+    if (ValidationUtils.isEmpty(data.username)) {
+      errors.push({ field: 'username', message: 'El nombre de usuario es obligatorio', code: 'REQUIRED' });
+    }
+    
+    if (!ValidationUtils.isEmail(data.email)) {
+      errors.push({ field: 'email', message: 'El email no es válido', code: 'INVALID_EMAIL' });
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+}
+
+const validator = new UserValidator();
+validator.validateOrThrow(user); // Lanza ValidationError si no es válido
+```
+
+## Desarrollo
+
+### Requisitos Previos
+
+- Node.js >= 14.0.0
+- npm >= 6.0.0
+
+### Instalación de Dependencias
+
+```bash
+npm install
+```
+
+### Compilación
+
+```bash
+npm run build
+```
+
+### Validación de Especificaciones API
+
+```bash
+npm run validate:specs
+```
+
+### Publicación
+
+```bash
+npm publish
+```
+
+## Documentación
+
+Para más información sobre la integración entre microservicios, consulta:
+
+- [Visión General de la Arquitectura](./docs/integration/architecture-overview.md)
+- [Flujo de Importación de Archivos](./docs/integration/file-import-flow.md)
+
+## Licencia
+
+AGPL-3.0

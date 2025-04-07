@@ -2,13 +2,19 @@
   "name": "fintech-personal-common",
   "version": "0.1.0",
   "description": "Shared components, contracts, and documentation for the Fintech Personal microservices ecosystem",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "schemas/**/*",
+    "api-specs/**/*"
+  ],
   "scripts": {
     "build": "tsc",
     "lint": "eslint . --ext .ts",
     "test": "jest",
-    "validate:specs": "swagger-cli validate api-specs/v1/*.yaml"
+    "validate:specs": "swagger-cli validate api-specs/v1/*.yaml",
+    "prepublishOnly": "npm run build && npm run validate:specs"
   },
   "keywords": [
     "fintech",
@@ -29,5 +35,19 @@
     "swagger-cli": "^4.0.4",
     "ts-jest": "^29.1.0",
     "typescript": "^5.0.3"
+  },
+  "dependencies": {
+    "@types/amqplib": "^0.10.1",
+    "amqplib": "^0.10.3"
+  },
+  "publishConfig": {
+    "registry": "http://localhost:4873"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/fintech-personal-common.git"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }

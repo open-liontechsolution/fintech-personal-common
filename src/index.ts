@@ -13,4 +13,7 @@ export * from '../schemas/dto/imports';
 // Exportación de definiciones de eventos
 export * from '../schemas/events/file-events';
 
-// Exportación de utilidades comunes (se añadirán en el futuro)
+// Exportación de utilidades comunes
+export * from './errors/app-error';
+export * from './validation/validator';
+export * from './messaging/rabbitmq-client';
