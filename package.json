@@ -41,7 +41,7 @@
     "amqplib": "^0.10.3"
   },
   "publishConfig": {
-    "registry": "http://localhost:4873"
+    "registry": "http://192.169.2.34:4873"
   },
   "repository": {
     "type": "git",
